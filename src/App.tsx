@@ -1,28 +1,48 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChangeSource, Editor, TLShape, Tldraw } from "tldraw";
+import { ChangeSource, Editor, TLShape, TLShapeId, Tldraw } from "tldraw";
 import { useSyncDemo } from "@tldraw/sync";
-import { diffRecord } from "@tldraw/sync-core";
 
-import CustomShapeUtil from "./CustomShape";
+import CustomShapeUtil, { isCustomShape } from "./CustomShape";
 
 import "./index.css";
 import "tldraw/tldraw.css";
+
+const id = "shape:item" as TLShapeId;
 
 const shapeUtils = [CustomShapeUtil];
 
 function App() {
   const store = useSyncDemo({
-    roomId: "tldraw-sync-remote-changes-example-2",
+    roomId: "tldraw-sync-remote-changes-example-3",
     shapeUtils,
   });
   const [editor, setEditor] = useState<Editor | null>(null);
 
   const onBeforeShapeChanged = useCallback(
     (prev: TLShape, next: TLShape, source: ChangeSource) => {
-      console.log("onBeforeShapeChanged", {
-        source,
-        diff: diffRecord(prev, next),
-      });
+      if (isCustomShape(prev) && isCustomShape(next)) {
+        console.log("onBeforeShapeChanged", {
+          source,
+          prev: prev.props,
+          next: next.props,
+        });
+        if (
+          source === "remote" &&
+          prev.props.doingSomethingExpensive &&
+          next.props.doingSomethingExpensive !== false
+        ) {
+          // i'd like for this to only happen when the change was made by a remote client
+          // since the current client needs to keep updating `expensiveData`
+          console.log("ignoring expensiveData updates");
+          return {
+            ...next,
+            props: {
+              ...next.props,
+              expensiveData: prev.props.expensiveData,
+            },
+          };
+        }
+      }
       return next;
     },
     []
@@ -31,9 +51,9 @@ function App() {
   const handleMount = useCallback((_editor: Editor) => {
     setEditor(_editor);
 
-    if (!_editor.getShape("shape:item")) {
+    if (!_editor.getShape(id)) {
       _editor.createShape({
-        id: "shape:item",
+        id,
         type: "custom",
         x: 200,
         y: 300,

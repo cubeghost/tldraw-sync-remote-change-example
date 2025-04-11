@@ -1,28 +1,35 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { HTMLContainer, Rectangle2d, ShapeUtil, T } from "tldraw";
-import { TLBaseShape } from "tldraw";
+import type { TLBaseShape, TLShape } from "tldraw";
 
 type CustomShape = TLBaseShape<
   "custom",
   {
     w: number;
     h: number;
+    expensiveData: any;
     doingSomethingExpensive: boolean;
   }
 >;
+
+export function isCustomShape(shape: TLShape): shape is CustomShape {
+  return shape.type === "custom";
+}
 
 export default class CustomShapeUtil extends ShapeUtil<CustomShape> {
   static override type = "custom" as const;
   static override props = {
     w: T.number,
     h: T.number,
+    expensiveData: T.any,
     doingSomethingExpensive: T.boolean,
   };
 
   getDefaultProps(): CustomShape["props"] {
     return {
-      w: 200,
-      h: 100,
+      w: 300,
+      h: 200,
+      expensiveData: [],
       doingSomethingExpensive: false,
     };
   }
@@ -51,18 +58,32 @@ export default class CustomShapeUtil extends ShapeUtil<CustomShape> {
         type: current.type,
         props: {
           doingSomethingExpensive: true,
+          expensiveData: [],
         },
       });
 
-      setTimeout(() => {
+      let counter = 0;
+      const interval = setInterval(() => {
+        const currentShape = this.editor.getShape<CustomShape>(shape.id);
+        if (!currentShape) return;
+        counter++;
+
         this.editor.updateShape({
-          id: current.id,
-          type: current.type,
+          id: shape.id,
+          type: shape.type,
           props: {
-            doingSomethingExpensive: false,
+            doingSomethingExpensive: counter === 10 ? false : true,
+            expensiveData: [
+              ...currentShape.props.expensiveData,
+              window.crypto.randomUUID(),
+            ],
           },
         });
-      }, 5000);
+
+        if (counter === 10) {
+          clearInterval(interval);
+        }
+      }, 500);
     }, []);
 
     const maybeStopPropagation = useCallback(
@@ -83,10 +104,16 @@ export default class CustomShapeUtil extends ShapeUtil<CustomShape> {
         onTouchEnd={maybeStopPropagation}
         onWheelCapture={maybeStopPropagation}
       >
-        <p>custom shape</p>
+        <p style={{ marginTop: 0 }}>custom shape</p>
         <button onClick={expensiveUpdate} type="button">
           do expensive update
         </button>
+        <code>
+          <pre>
+            doingSomethingExpensive: {shape.props.doingSomethingExpensive}
+          </pre>
+          <pre>expensiveData: [{shape.props.expensiveData.join(",")}]</pre>
+        </code>
       </HTMLContainer>
     );
   }
