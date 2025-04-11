@@ -110,7 +110,8 @@ export default class CustomShapeUtil extends ShapeUtil<CustomShape> {
         </button>
         <code>
           <pre>
-            doingSomethingExpensive: {shape.props.doingSomethingExpensive}
+            doingSomethingExpensive:{" "}
+            {shape.props.doingSomethingExpensive ? "true" : "false"}
           </pre>
           <pre>expensiveData: [{shape.props.expensiveData.join(",")}]</pre>
         </code>
